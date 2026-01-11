@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-30 px-6 h-16 flex justify-between items-center">
+        <span class="font-bold text-xl text-indigo-600">AdminPanel</span>
+        <div class="flex gap-4">
+            <button onclick="showTab('photos')" class="text-sm font-medium hover:text-indigo-600">Foto</button>
+            <button onclick="showTab('users')" class="text-sm font-medium hover:text-indigo-600">User</button>
+            <button onclick="localStorage.clear(); location.href='login.html'" class="text-red-600 text-sm ml-4">Logout</button>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto p-6">
+        <div id="tab-photos">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Manajemen Aset</h2>
+                <button onclick="document.getElementById('uploadModal').classList.remove('hidden')" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Upload</button>
+            </div>
+            <div class="bg-white rounded shadow overflow-hidden">
+                <table class="w-full text-left text-sm text-gray-600">
+                    <thead class="bg-gray-50 border-b"><tr><th class="p-4">ID</th><th class="p-4">Judul</th><th class="p-4">Harga</th><th class="p-4 text-right">Aksi</th></tr></thead>
+                    <tbody id="photoTableBody" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-users" class="hidden">
+            <h2 class="text-2xl font-bold mb-6">Data User</h2>
+            <div class="bg-white rounded shadow overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 border-b"><tr><th class="p-4">ID</th><th class="p-4">Username</th><th class="p-4">Role</th><th class="p-4">Joined</th></tr></thead>
+                    <tbody id="userTableBody" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="uploadModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4">Upload Foto</h3>
+            <input id="upTitle" type="text" placeholder="Judul" class="w-full mb-3 border p-2 rounded">
+            <textarea id="upDesc" placeholder="Deskripsi" class="w-full mb-3 border p-2 rounded"></textarea>
+            <input id="upPrice" type="number" placeholder="Harga" class="w-full mb-3 border p-2 rounded">
+            <input id="upFile" type="file" class="w-full mb-4">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-500 px-4 py-2">Batal</button>
+                <button onclick="uploadPhoto()" class="bg-indigo-600 text-white px-4 py-2 rounded">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4">Edit Foto</h3>
+            <input type="hidden" id="editId">
+            <input id="editTitle" class="w-full mb-3 border p-2 rounded">
+            <textarea id="editDesc" class="w-full mb-3 border p-2 rounded"></textarea>
+            <input id="editPrice" type="number" class="w-full mb-4 border p-2 rounded">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-gray-500 px-4 py-2">Batal</button>
+                <button onclick="updatePhoto()" class="bg-green-600 text-white px-4 py-2 rounded">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        function showTab(t) {
+            document.getElementById('tab-photos').classList.add('hidden');
+            document.getElementById('tab-users').classList.add('hidden');
+            document.getElementById('tab-'+t).classList.remove('hidden');
+            if(t==='photos') loadPhotos(); else loadUsers();
+        }
+
+        async function loadPhotos() {
+            const res = await fetch('http://localhost:3000/admin/photos');
+            const data = await res.json();
+            document.getElementById('photoTableBody').innerHTML = data.map(p => `
+                <tr class="hover:bg-gray-50">
+                    <td class="p-4">#${p.id}</td>
+                    <td class="p-4 font-bold">${p.title}</td>
+                    <td class="p-4">Rp ${p.price}</td>
+                    <td class="p-4 text-right flex justify-end gap-2">
+                        <button onclick="openEdit('${p.id}','${p.title}','${p.description}','${p.price}')" class="text-blue-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                        <button onclick="deletePhoto(${p.id})" class="text-red-600"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function loadUsers() {
+            const res = await fetch('http://localhost:3000/admin/users');
+            const data = await res.json();
+            document.getElementById('userTableBody').innerHTML = data.map(u => `
+                <tr><td class="p-4">#${u.id}</td><td class="p-4 font-bold">${u.username}</td><td class="p-4 uppercase">${u.role}</td><td class="p-4 text-gray-400 text-xs">${u.created_at}</td></tr>
+            `).join('');
+        }
+
+        async function uploadPhoto() {
+            const fd = new FormData();
+            fd.append('title', document.getElementById('upTitle').value);
+            fd.append('description', document.getElementById('upDesc').value);
+            fd.append('price', document.getElementById('upPrice').value);
+            fd.append('photo', document.getElementById('upFile').files[0]);
+            await fetch('http://localhost:3000/admin/upload', {method:'POST', body:fd});
+            document.getElementById('uploadModal').classList.add('hidden');
+            loadPhotos();
+        }
+
+        async function deletePhoto(id) {
+            if(confirm('Hapus foto ini?')) {
+                await fetch(`http://localhost:3000/admin/photo/${id}`, {method:'DELETE'});
+                loadPhotos();
+            }
+        }
+
+        function openEdit(id,t,d,p) {
+            document.getElementById('editId').value=id; document.getElementById('editTitle').value=t; document.getElementById('editDesc').value=d; document.getElementById('editPrice').value=p;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        async function updatePhoto() {
+            const id = document.getElementById('editId').value;
+            const body = { title:document.getElementById('editTitle').value, description:document.getElementById('editDesc').value, price:document.getElementById('editPrice').value };
+            await fetch(`http://localhost:3000/admin/photo/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+            document.getElementById('editModal').classList.add('hidden');
+            loadPhotos();
+        }
+
+        loadPhotos();
+    </script>
+</body>
+</html>
